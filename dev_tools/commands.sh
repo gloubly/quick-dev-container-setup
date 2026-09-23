@@ -13,12 +13,12 @@ dev_enter() {
 
 # run a dev container, need an image tag
 dev_run() {
-    if [ $# -eq 0 ]; then
+    if [[ $# == 0 ]]; then
         echo "Please provide an image tag"
         return 1
     fi
     local tag="$1"
-    if [ $tag = "base" ]; then
+    if [[ $tag == "base" ]]; then
         echo "Can't use base image, need a final image tag"
         return 1
     fi
@@ -31,11 +31,11 @@ dev_run() {
 
 # build the base image or a final dev image
 dev_build() {
-    if [ $# -ne 1 ]; then
+    if [[ $# != 1 ]]; then
         echo "Need an image tag"
         return 1
     fi
-    if [ "$1" = "base" ]; then
+    if [[ "$1" == "base" ]]; then
         docker build -t ${DEV_CONTAINER_NAME}:base \
                      --build-arg UID=$(id -u) \
                      --build-arg GID=$(id -g) \

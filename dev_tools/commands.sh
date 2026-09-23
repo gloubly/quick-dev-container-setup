@@ -13,33 +13,6 @@ _project_directory_exists() {
     fi
 }
 
-# enter the dev-container, no args needed
-dev_enter() {
-    dev_start > /dev/null
-    docker exec -it ${DEV_CONTAINER_NAME} bash
-}
-
-# run a dev container, need an image tag
-dev_run() {
-    if [[ $# == 0 ]]; then
-        echo "Please provide an image tag"
-        return 1
-    fi
-    local tag="$1"
-    if [[ "${tag}" == "base" ]]; then
-        echo "Can't use base image, need a final image tag"
-        return 1
-    fi
-    _project_directory_exists "${tag}" || return 1
-
-    # add env vars
-    . ${DEV_CONTAINER_BASE_PATH}/projects/${tag}/config
-    docker run \
-        -v ${PROJECT_PATH}:/workspace/$(basename "${PROJECT_PATH}") \
-        --name ${DEV_CONTAINER_NAME} \
-        -it ${DEV_CONTAINER_NAME}:${tag}
-}
-
 # build the base image or a final dev image
 dev_build() {
     if [[ $# != 1 ]]; then
@@ -66,13 +39,25 @@ dev_build() {
         ${DEV_CONTAINER_BASE_PATH}
 }
 
-# recreate the same container
-dev_reset() {
-    dev_start > /dev/null
-    local project_dir=$(docker exec ${DEV_CONTAINER_NAME} env | grep DEV_CONTAINER_PROJECT_DIR | cut -d '=' -f 2)
-    dev_clean
-    dev_build "${project_dir}"
-    dev_run "${project_dir}"
+# run a dev container, need an image tag
+dev_run() {
+    if [[ $# == 0 ]]; then
+        echo "Please provide an image tag"
+        return 1
+    fi
+    local tag="$1"
+    if [[ "${tag}" == "base" ]]; then
+        echo "Can't use base image, need a final image tag"
+        return 1
+    fi
+    _project_directory_exists "${tag}" || return 1
+
+    # add env vars
+    . ${DEV_CONTAINER_BASE_PATH}/projects/${tag}/config
+    docker run \
+        -v ${PROJECT_PATH}:/workspace/$(basename "${PROJECT_PATH}") \
+        --name ${DEV_CONTAINER_NAME} \
+        -it ${DEV_CONTAINER_NAME}:${tag}
 }
 
 # start the container or do nothing if if doesn't exist or is already running
@@ -91,10 +76,37 @@ dev_start() {
     esac
 }
 
+# enter the dev-container, no args needed
+dev_enter() {
+    dev_start > /dev/null
+    docker exec -it ${DEV_CONTAINER_NAME} bash
+}
+
+# recreate the same container
+dev_reset() {
+    dev_start > /dev/null
+    local project_dir=$(docker exec ${DEV_CONTAINER_NAME} env | grep DEV_CONTAINER_PROJECT_DIR | cut -d '=' -f 2)
+    dev_clean
+    dev_build "${project_dir}"
+    dev_run "${project_dir}"
+}
+
 # stop and remove the container
 dev_clean() {
     echo "Stopping the dev container"
     docker stop "${DEV_CONTAINER_NAME}" > /dev/null || return 1
-    echo "Deleting the dev container"
+    echo "Removing the dev container"
     docker rm "${DEV_CONTAINER_NAME}" > /dev/null
+}
+
+dev_help() {
+    cat << EOM
+Dev container commands
+* dev_build [tag]   Build a dev image, [tag] must be either a directory in projects/ or "base"
+* dev_run   [tag]   Create a new dev container, [tag] must be either a directory in projects/
+* dev_start         Start the dev container
+* dev_enter         Enter in the dev container (starts it if needed)
+* dev_reset         Recreate the dev container with the same configuration
+* dev_clean         Remove the dev container
+EOM
 }

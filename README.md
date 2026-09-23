@@ -1,6 +1,6 @@
 # Quick dev container setup
 
-Quick multi-containers dev setup to easily switch between them. Only one is active at once
+Quick multi-containers dev setup to easily switch between them. Only one is active at once.
 
 ## Base image
 All dev containers inherit from a "base" image:
@@ -9,8 +9,16 @@ All dev containers inherit from a "base" image:
 * Essential dependencies
 
 ## Final images
-Final images build files needed to be located in a directory *projects/*. The directory name will be the image tag.
-Files needed:
-* config: build environment variables
+**Final** images inherit from the **base** image.
+The build files need to be in *projects/*. The directory name will be the image tag.
+
+#### Files needed:
+* config (to store build environment variables):
     - PROJECT_PATH: absolute path of the project to be mounted on the container
 * install.sh
+
+## Setup
+Add this to your .bashrc or .zshrc
+```bash
+source YOUR_PATH/dev_container/dev_tools/commands.sh
+```

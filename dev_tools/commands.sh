@@ -87,7 +87,6 @@ dev_reset() {
     dev_start > /dev/null
     local project_dir=$(docker exec ${DEV_CONTAINER_NAME} env | grep DEV_CONTAINER_PROJECT_DIR | cut -d '=' -f 2)
     dev_clean
-    dev_build "${project_dir}"
     dev_run "${project_dir}"
 }
 

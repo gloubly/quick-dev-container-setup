@@ -9,7 +9,7 @@ ARG GID
 
 WORKDIR /workspace
 
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y && apt-get install -y software-properties-common
 
 # timezone
 ENV TZ=Europe/London
@@ -22,11 +22,19 @@ RUN usermod -aG sudo ubuntu
 RUN chown ubuntu /workspace
 USER ubuntu
 
+# register apt repositories
+RUN sudo add-apt-repository -y ppa:deadsnakes/ppa && \
+    sudo apt-get update
+
 # base dependencies
 RUN sudo apt-get install -y \
     build-essential \
     cmake \
     git \
-    software-properties-common \
     nano \
-    wget
+    wget \
+    curl \
+    python3.15 \
+    python3.15-dev \
+    python3.15-venv \
+    libffi-dev

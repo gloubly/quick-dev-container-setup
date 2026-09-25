@@ -1,46 +1,68 @@
-#/bin/bash
+##################################################
+###### Dev commands for dev container usage ######
+##################################################
 
 # absolute path of the project root directory
 DEV_CONTAINER_BASE_PATH=$(realpath "$(dirname "$0")/..")
 DEV_CONTAINER_NAME="dev-container"
 
-# checks if a project directory exists
-_project_directory_exists() {
-    local project_path="${DEV_CONTAINER_BASE_PATH}/projects/$1"
-    if [[ ! -d "${project_path}" ]]; then
-        echo "Path: ${project_path} doesn't exist"
-        return 1
-    fi
-}
+source ${DEV_CONTAINER_BASE_PATH}/dev_tools/tools.sh
 
 # build the base image or a final dev image
-dev_build() {
-    if [[ $# != 1 ]]; then
+_dev_build() {
+    # check that an image tag is provided and that it isn't an option
+    if [[ $# == 0 ]] || [[ $1 == -* ]]; then
         echo "Need an image tag"
         return 1
     fi
-    if [[ "$1" == "base" ]]; then
+
+    local project="$1"
+    shift
+
+    local additional_args=()
+    while [[ $# > 0 ]]; do
+        case $1 in
+            --debug)
+                additional_args+=(--progress plain --no-cache)
+                shift
+                ;;
+            --help)
+                echo "TODO help"
+                return 0
+                ;;
+            *)
+                additional_args+=($1)
+                shift
+                ;;
+        esac
+    done
+
+    if [[ "${project}" == "base" ]]; then
         docker build \
             -t ${DEV_CONTAINER_NAME}:base \
             --build-arg UID=$(id -u) \
             --build-arg GID=$(id -g) \
             -f ${DEV_CONTAINER_BASE_PATH}/docker/base/Dockerfile \
+            ${additional_args[@]} \
             ${DEV_CONTAINER_BASE_PATH}
         return 0
     fi
-    local project="$1"
+
     _project_directory_exists "${project}" || return 1
+    _image_exists "base" || return 1
+
     # add env vars
     . "${DEV_CONTAINER_BASE_PATH}/projects/${project}/config"
     docker build \
         -t ${DEV_CONTAINER_NAME}:${project} \
         --build-arg PROJECT_DIR=${project} \
         -f ${DEV_CONTAINER_BASE_PATH}/docker/final/Dockerfile \
+        ${additional_args[@]} \
         ${DEV_CONTAINER_BASE_PATH}
 }
 
 # run a dev container, need an image tag
-dev_run() {
+_dev_run() {
     if [[ $# == 0 ]]; then
         echo "Please provide an image tag"
         return 1
@@ -50,18 +72,27 @@ dev_run() {
         echo "Can't use base image, need a final image tag"
         return 1
     fi
+    if $(docker ps -a --format {{.Names}} | grep -q "${DEV_CONTAINER_NAME}"); then
+        echo "A dev container is already running"
+        return 1
+    fi
     _project_directory_exists "${tag}" || return 1
+    _image_exists "${tag}" || return 1
+
+    shift
+    local additional_args="$@"
 
     # add env vars
     . ${DEV_CONTAINER_BASE_PATH}/projects/${tag}/config
     docker run \
         -v ${PROJECT_PATH}:/workspace/$(basename "${PROJECT_PATH}") \
         --name ${DEV_CONTAINER_NAME} \
+        ${additional_args} \
         -it ${DEV_CONTAINER_NAME}:${tag}
 }
 
 # start the container or do nothing if if doesn't exist or is already running
-dev_start() {
+_dev_start() {
     local result=$(docker ps -a -f name=dev-container --format '{{.Status}}' | cut -d ' ' -f 1)
     case ${result} in
         Up)
@@ -77,35 +108,86 @@ dev_start() {
 }
 
 # enter the dev-container, no args needed
-dev_enter() {
-    dev_start > /dev/null
+_dev_enter() {
+    _dev_start > /dev/null
     docker exec -it ${DEV_CONTAINER_NAME} bash
 }
 
 # recreate the same container
-dev_reset() {
-    dev_start > /dev/null
+_dev_reset() {
+    _dev_start > /dev/null
     local project_dir=$(docker exec ${DEV_CONTAINER_NAME} env | grep DEV_CONTAINER_PROJECT_DIR | cut -d '=' -f 2)
-    dev_clean
-    dev_run "${project_dir}"
+    _dev_clean
+    _dev_run "${project_dir}"
 }
 
 # stop and remove the container
-dev_clean() {
+_dev_clean() {
     echo "Stopping the dev container"
     docker stop "${DEV_CONTAINER_NAME}" > /dev/null || return 1
     echo "Removing the dev container"
     docker rm "${DEV_CONTAINER_NAME}" > /dev/null
 }
 
-dev_help() {
-    cat << EOM
+# delete dangling and dev container related images
+_dev_imgclean() {
+    echo "Cleaning dangling images"
+    docker rmi $(docker images --filter "dangling=true" --format {{.ID}}) 2> /dev/null || echo "No dangling images found"
+    echo "Cleaning ${DEV_CONTAINER_NAME} images"
+    docker rmi $(docker images dev-container --format '{{.ID}}') 2> /dev/null || echo "No images unused found"
+}
+
+_dev_help() {
+    cat << EOF
 Dev container commands
-* dev_build [tag]   Build a dev image, [tag] must be either a directory in projects/ or "base"
-* dev_run   [tag]   Create a new dev container, [tag] must be either a directory in projects/
-* dev_start         Start the dev container
-* dev_enter         Enter in the dev container (starts it if needed)
-* dev_reset         Recreate the dev container with the same configuration
-* dev_clean         Remove the dev container
-EOM
+* dev build [tag]   Build a dev image, [tag] must be either a directory in projects/ or "base"
+* dev run   [tag]   Create a new dev container, [tag] must be either a directory in projects/
+* dev start         Start the dev container
+* dev enter         Enter in the dev container (starts it if needed)
+* dev reset         Recreate the dev container with the same configuration
+* dev clean         Remove the dev container
+* dev imgclean      Delete dangling and ${DEV_CONTAINER_NAME} related images
+* dev --help        Print this message
+EOF
+}
+
+dev() {
+    case $1 in
+        build)
+            shift
+            _dev_build "$@"
+            ;;
+        run)
+            shift
+            _dev_run "$@"
+            ;;
+        start)
+            shift
+            _dev_start "$@"
+            ;;
+        enter)
+            shift
+            _dev_enter "$@"
+            ;;
+        reset)
+            shift
+            _dev_reset "$@"
+            ;;
+        clean)
+            shift
+            _dev_clean "$@"
+            ;;
+        imclean)
+            shift
+            _dev_imgclean "$@"
+            ;;
+        --help|"")
+            shift
+            _dev_help
+            ;;
+        *)
+            echo "Unknown command $1"
+            return 1
+            ;;
+    esac
 }

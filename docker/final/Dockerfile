@@ -15,6 +15,8 @@ COPY --chmod=755 ../projects/${PROJECT_DIR}/install.sh /tmp/install.sh
 
 RUN /tmp/install.sh
 
+WORKDIR /workspace/${PROJECT_DIR}
+
 ENTRYPOINT ["/bin/bash"]
 
 # CMD

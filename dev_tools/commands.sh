@@ -7,13 +7,19 @@ DEV_CONTAINER_BASE_PATH=$(realpath "$(dirname "$0")/..")
 DEV_CONTAINER_NAME="dev-container"
 
 source ${DEV_CONTAINER_BASE_PATH}/dev_tools/tools.sh
+source ${DEV_CONTAINER_BASE_PATH}/dev_tools/help.sh
 
 # build the base image or a final dev image
 _dev_build() {
     # check that an image tag is provided and that it isn't an option
-    if [[ $# == 0 ]] || [[ $1 == -* ]]; then
+    if [[ $# == 0 ]]; then
         echo "Need an image tag"
         return 1
+    fi
+    if [[ $1 == -* ]]; then {
+        _dev_build_help
+        return 0
+    }
     fi
 
     local project="$1"
@@ -67,6 +73,11 @@ _dev_run() {
         echo "Please provide an image tag"
         return 1
     fi
+    if [[ $1 == -* ]]; then {
+        _dev_run_help
+        return 0
+    }
+    fi
     local tag="$1"
     if [[ "${tag}" == "base" ]]; then
         echo "Can't use base image, need a final image tag"
@@ -93,6 +104,11 @@ _dev_run() {
 
 # start the container or do nothing if if doesn't exist or is already running
 _dev_start() {
+    if [[ ! -z $1 ]]; then {
+        _dev_start_help
+        return 0
+    }
+    fi
     local result=$(docker ps -a -f name=dev-container --format '{{.Status}}' | cut -d ' ' -f 1)
     case ${result} in
         Up)
@@ -109,6 +125,11 @@ _dev_start() {
 
 # enter the dev-container, no args needed
 _dev_enter() {
+    if [[ ! -z $1 ]]; then {
+        _dev_enter_help
+        return 0
+    }
+    fi
     _dev_start > /dev/null
     docker exec -it ${DEV_CONTAINER_NAME} bash
 }
@@ -135,20 +156,6 @@ _dev_imgclean() {
     docker rmi $(docker images --filter "dangling=true" --format {{.ID}}) 2> /dev/null || echo "No dangling images found"
     echo "Cleaning ${DEV_CONTAINER_NAME} images"
     docker rmi $(docker images dev-container --format '{{.ID}}') 2> /dev/null || echo "No images unused found"
-}
-
-_dev_help() {
-    cat << EOF
-Dev container commands
-* dev build [tag]   Build a dev image, [tag] must be either a directory in projects/ or "base"
-* dev run   [tag]   Create a new dev container, [tag] must be either a directory in projects/
-* dev start         Start the dev container
-* dev enter         Enter in the dev container (starts it if needed)
-* dev reset         Recreate the dev container with the same configuration
-* dev clean         Remove the dev container
-* dev imgclean      Delete dangling and ${DEV_CONTAINER_NAME} related images
-* dev --help        Print this message
-EOF
 }
 
 dev() {
@@ -187,6 +194,7 @@ dev() {
             ;;
         *)
             echo "Unknown command $1"
+            echo "See 'dev --help'"
             return 1
             ;;
     esac

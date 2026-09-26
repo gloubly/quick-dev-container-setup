@@ -34,11 +34,12 @@ For an example, check my configuration for liburdf [here](projects/) - [GitHub r
 
 ## Available commands
 
-| Commands | Usage
-| ----- | -----
-| dev_build [tag] | Build a dev image, [tag] must be either a directory in projects/ or "base"
-dev_run [tag] | Create a new dev container, [tag] must be either a directory in projects/
-dev_start | Start the dev container
-dev_enter | Enter in the dev container (starts it if needed)
-dev_reset | Recreate the dev container with the same configuration
-dev_clean | Remove the dev container
+|   Commands        |   Usage
+| ----------------- | ----------
+|   dev build       |   Build a dev image
+|   dev run         |   Create a new dev container
+|   dev start       |   Start the dev container
+|   dev enter       |   Enter in the dev container, starts it if needed
+|   dev reset       |   Recreate the dev container with the same configuration
+|   dev clean       |   Remove the dev container
+|   dev imgclean    |   Delete dangling and dev-container related images

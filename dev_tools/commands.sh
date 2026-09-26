@@ -32,10 +32,6 @@ _dev_build() {
                 additional_args+=(--progress plain --no-cache)
                 shift
                 ;;
-            --help)
-                echo "TODO help"
-                return 0
-                ;;
             *)
                 additional_args+=($1)
                 shift

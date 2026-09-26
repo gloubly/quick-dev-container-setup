@@ -119,7 +119,8 @@ _dev_start() {
             docker start "${DEV_CONTAINER_NAME}" > /dev/null
             ;;
         *)
-            echo "Dev container doesn't exist"
+            >&2 echo "Dev container doesn't exist"
+            return 1
     esac
 }
 
@@ -136,7 +137,7 @@ _dev_enter() {
 
 # recreate the same container
 _dev_reset() {
-    _dev_start > /dev/null
+    _dev_start > /dev/null || return 0
     local project_dir=$(docker exec ${DEV_CONTAINER_NAME} env | grep DEV_CONTAINER_PROJECT_DIR | cut -d '=' -f 2)
     _dev_clean
     _dev_run "${project_dir}"

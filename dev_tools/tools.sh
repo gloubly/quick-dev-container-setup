@@ -18,3 +18,10 @@ _image_exists() {
         return 1
     fi
 }
+
+# useful for pre-commit hooks that require dependencies on the dev container
+# pushing isn't supported
+# extract the [user] part of .gitconfig and sends it to the container
+_setup_gitconfig_user() {
+    grep -Pzo "\[user\]\n[^\[]+" ~/.gitconfig | xargs --null -i docker exec "${DEV_CONTAINER_NAME}" bash -c 'echo "{}" > ${HOME}/.gitconfig'
+}

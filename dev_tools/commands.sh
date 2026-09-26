@@ -99,7 +99,9 @@ _dev_run() {
         -v ${PROJECT_PATH}:/workspace/$(basename "${PROJECT_PATH}") \
         --name ${DEV_CONTAINER_NAME} \
         ${additional_args} \
-        -it ${DEV_CONTAINER_NAME}:${tag}
+        -dt ${DEV_CONTAINER_NAME}:${tag} > /dev/null
+    _setup_gitconfig_user
+    _dev_enter
 }
 
 # start the container or do nothing if if doesn't exist or is already running
